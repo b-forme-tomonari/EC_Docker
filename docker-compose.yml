@@ -1,0 +1,48 @@
+version: '3'
+
+services:
+  mysql:
+    build:
+      context: ./mysql
+    ports:
+      - 3306:3306
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: ec_sys
+      MYSQL_USER: ec_java
+      MYSQL_PASSWORD: ecjava
+      TZ: Asia/Tokyo
+    healthcheck:
+      test: mysqladmin ping -h 127.0.0.1 -u$$MYSQL_USER -p$$MYSQL_PASSWORD
+      
+  redis:
+    build:
+      context: ./redis
+    ports:
+      - 6379:6379
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping", "|", "grep", "PONG"]
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+      
+  nginx:
+    build:
+      context: ./nginx
+    ports:
+      - 80:80
+    volumes:
+      - ./nginx/logs:/var/log/nginx
+
+  tomcat:
+    build:
+      context: ./tomcat
+    ports:
+      - 8080:8080
+    volumes:
+      - ./tomcat/logs:/usr/local/tomcat/logs
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
